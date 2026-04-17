@@ -17,7 +17,7 @@ export default function FileUploader() {
 
   const handleSubmit = async () => {
     if (!pdfFiles.length || !excelFile) {
-      setMessage("Debes subir archivos PDFs y el archivo Excel.");
+      setMessage("Debe subir sus archivos de tipo PDF y el archivo Excel.");
       return;
     }
 
@@ -56,7 +56,7 @@ export default function FileUploader() {
       setMessage("Proceso completado. Ya puedes descargar el Excel.");
     } catch (error) {
       console.error(error);
-      setMessage("Error al procesar.");
+      setMessage(`Error al procesar. ${error}`);
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ export default function FileUploader() {
       {message && (
         <div
           className={`text-center text-sm mt-2 ${
-            message.includes("Error") ? "text-red-500" : "text-green-600"
+            message.includes("Error") || message.includes("Debe") ? "text-red-500" : "text-green-600"
           }`}
         >
           {message}
