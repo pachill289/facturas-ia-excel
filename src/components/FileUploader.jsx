@@ -5,6 +5,7 @@ export default function FileUploader() {
   const [excelFile, setExcelFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [downloadUrl, setDownloadUrl] = useState(null);
 
   const handlePdfChange = (e) => {
     setPdfFiles([...e.target.files]);
@@ -16,12 +17,13 @@ export default function FileUploader() {
 
   const handleSubmit = async () => {
     if (!pdfFiles.length || !excelFile) {
-      setMessage("Debes subir PDFs y el archivo Excel.");
+      setMessage("Debes subir archivos PDFs y el archivo Excel.");
       return;
     }
 
     setLoading(true);
     setMessage("");
+    setDownloadUrl(null);
 
     const formData = new FormData();
 
@@ -37,13 +39,21 @@ export default function FileUploader() {
         {
           method: "POST",
           body: formData,
-        },
+        }
       );
 
-      const result = await response.json();
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor");
+      }
 
-      setMessage("Proceso completado correctamente.");
-      console.log(result);
+      // recibir como archivo
+      const blob = await response.blob();
+
+      // crear URL temporal para descarga
+      const url = window.URL.createObjectURL(blob);
+      setDownloadUrl(url);
+
+      setMessage("Proceso completado. Ya puedes descargar el Excel.");
     } catch (error) {
       console.error(error);
       setMessage("Error al procesar.");
@@ -52,8 +62,20 @@ export default function FileUploader() {
     }
   };
 
+  const handleDownload = () => {
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = "facturas_procesadas.xlsx";
+    a.click();
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="max-w-xl mx-auto p-6 bg-white rounded-2xl shadow space-y-4">
+      
+      <h2 className="text-xl font-semibold text-center">
+        Procesador de Facturas PDF → Excel
+      </h2>
+
       {/* PDFs */}
       <div>
         <label className="block font-medium mb-1">Subir Facturas (PDF)</label>
@@ -77,28 +99,40 @@ export default function FileUploader() {
         />
       </div>
 
-      {/* Lista de archivos */}
-      <div className="text-sm text-gray-600">
-        <p>
-          <strong>PDFs:</strong> {pdfFiles.length}
-        </p>
-        <p>
-          <strong>Excel:</strong> {excelFile?.name || "No seleccionado"}
-        </p>
+      {/* Estado */}
+      <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+        <p><strong>PDFs:</strong> {pdfFiles.length}</p>
+        <p><strong>Excel:</strong> {excelFile?.name || "No seleccionado"}</p>
       </div>
 
-      {/* Botón */}
+      {/* Botón procesar */}
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition disabled:bg-gray-400"
       >
         {loading ? "Procesando..." : "Procesar"}
       </button>
 
       {/* Mensaje */}
       {message && (
-        <div className="text-center text-sm mt-2 text-red-500">{message}</div>
+        <div
+          className={`text-center text-sm mt-2 ${
+            message.includes("Error") ? "text-red-500" : "text-green-600"
+          }`}
+        >
+          {message}
+        </div>
+      )}
+
+      {/* descarga excel */}
+      {downloadUrl && (
+        <button
+          onClick={handleDownload}
+          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
+        >
+          Descargar Excel
+        </button>
       )}
     </div>
   );
