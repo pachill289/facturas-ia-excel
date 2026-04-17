@@ -127,12 +127,30 @@ export default function FileUploader() {
 
       {/* descarga excel */}
       {downloadUrl && (
-        <button
-          onClick={handleDownload}
-          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 transition"
-        >
-          Descargar Excel
-        </button>
+        <>
+          <button
+            onClick={handleDownload}
+            className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition shadow"
+          >
+            📥 Descargar Excel
+          </button>
+
+          <div className="text-center mt-3">
+            <p className="text-sm text-gray-500 mb-1">
+              Si los datos no se actualizaron puedes ver el excel en línea
+            </p>
+
+            <a
+              href="https://docs.google.com/spreadsheets/d/1aDrP5jqU04DCPW2PLwAYNZFbiNCsDHJKcBN8TUYA1Hc/edit?usp=drive_link"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-blue-600 hover:text-blue-800 text-sm font-medium underline transition"
+            >
+              Abrir Excel en Google Sheets
+            </a>
+          </div>
+        </>
+        
       )}
     </div>
   );
