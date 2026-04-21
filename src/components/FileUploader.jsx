@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 
 const API_BASE  = import.meta.env.VITE_API_BASE  ?? "http://localhost:8000";
-const API_URL   = `${API_BASE}/process-invoices`;
+const API_URL   = `${API_BASE}process-invoices`;
 const SHEET_URL = import.meta.env.VITE_SHEET_URL;
 
 const STATUS_CONFIG = {
