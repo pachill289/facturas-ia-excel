@@ -24,7 +24,7 @@ export default function FileUploader() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
+        const res = await fetch(`${API_BASE}health`, { signal: AbortSignal.timeout(4000) });
         setApiStatus(res.ok);
       } catch {
         setApiStatus(false);
