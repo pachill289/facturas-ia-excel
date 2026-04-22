@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-
+// desarrollo
+// const API_BASE  = "http://localhost:8000";
+// producción
 const API_BASE  = import.meta.env.VITE_API_BASE  ?? "http://localhost:8000";
-const API_URL   = `${API_BASE}process-invoices`;
-const SHEET_URL = import.meta.env.VITE_SHEET_URL;
+const API_URL   = `${API_BASE}/process-invoices`;
+const SHEET_URL = import.meta.env.VITE_SHEET_URL ?? "";
 
 const STATUS_CONFIG = {
   added:     { label: "Agregada",  bg: "#E6F9F1", color: "#0A6B45", border: "#6EDCAB" },
@@ -10,21 +12,100 @@ const STATUS_CONFIG = {
   error:     { label: "Error",     bg: "#FEF0F0", color: "#991B1B", border: "#FCA5A5" },
 };
 
+function SummaryBox({ value, label, config }) {
+  const cfg = config ?? STATUS_CONFIG.error;
+  return (
+    <div style={{
+      background: cfg.bg, border: `1px solid ${cfg.border}`,
+      borderRadius: 10, padding: "10px 12px", textAlign: "center",
+    }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: cfg.color }}>{value}</div>
+      <div style={{ fontSize: 11, color: cfg.color, fontWeight: 500, marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
+function SheetSummary({ title, results, statusKey, messageKey }) {
+  const added     = results.filter(r => r[statusKey] === "added").length;
+  const duplicate = results.filter(r => r[statusKey] === "duplicate").length;
+  const errors    = results.filter(r => r[statusKey] === "error" || !r[statusKey]).length;
+
+  return (
+    <div style={{
+      border: "1px solid #ECECEA", borderRadius: 12,
+      overflow: "hidden", marginBottom: 12,
+    }}>
+      {/* Título de la hoja */}
+      <div style={{
+        background: "#F7F7F5", padding: "9px 16px",
+        borderBottom: "1px solid #ECECEA",
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <span style={{
+          width: 8, height: 8, borderRadius: "50%",
+          background: added > 0 ? "#4ADE80" : duplicate > 0 ? "#FBBF24" : "#F87171",
+          display: "inline-block", flexShrink: 0,
+        }}/>
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#1A1A1A", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          {title}
+        </span>
+      </div>
+
+      {/* Contadores */}
+      <div style={{ padding: "12px 16px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
+          <SummaryBox value={added}     label="Agregadas"  config={STATUS_CONFIG.added} />
+          <SummaryBox value={duplicate} label="Duplicadas" config={STATUS_CONFIG.duplicate} />
+          <SummaryBox value={errors}    label="Con error"  config={STATUS_CONFIG.error} />
+        </div>
+
+        {/* Detalle por factura */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {results.map((r, i) => {
+            const st  = r[statusKey];
+            const msg = r[messageKey];
+            const cfg = STATUS_CONFIG[st] ?? STATUS_CONFIG.error;
+            return (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                background: "#FAFAF8", borderRadius: 8, padding: "8px 12px",
+                border: "1px solid #ECECEA",
+              }}>
+                <div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
+                    Factura #{r.nro_factura}
+                  </span>
+                  <p style={{ fontSize: 11, color: "#9A9A96", margin: "2px 0 0" }}>{msg ?? "—"}</p>
+                </div>
+                <span style={{
+                  background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
+                  borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 600,
+                  whiteSpace: "nowrap", marginLeft: 10,
+                }}>
+                  {cfg.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function FileUploader() {
   const [pdfFiles, setPdfFiles]   = useState([]);
   const [loading, setLoading]     = useState(false);
   const [results, setResults]     = useState(null);
   const [error, setError]         = useState("");
   const [dragOver, setDragOver]   = useState(false);
-  // null = comprobando, true = conectado, false = sin conexión
-  const [apiStatus, setApiStatus] = useState(null);
+  const [apiStatus, setApiStatus] = useState(null); // null=verificando, true=ok, false=error
   const inputRef = useRef();
 
-  // ── Health check al montar el componente ──────────────────────
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch(`${API_BASE}health`, { signal: AbortSignal.timeout(4000) });
+        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(180000) });
         setApiStatus(res.ok);
       } catch {
         setApiStatus(false);
@@ -33,7 +114,6 @@ export default function FileUploader() {
     check();
   }, []);
 
-  // ── Manejo de archivos ────────────────────────────────────────
   const addFiles = (incoming) => {
     const pdfs = Array.from(incoming).filter(f => f.type === "application/pdf");
     if (!pdfs.length) { setError("Solo se aceptan archivos PDF."); return; }
@@ -51,7 +131,6 @@ export default function FileUploader() {
     addFiles(e.dataTransfer.files);
   };
 
-  // ── Envío a la API ────────────────────────────────────────────
   const handleSubmit = async () => {
     if (!pdfFiles.length) { setError("Selecciona al menos un PDF."); return; }
     setLoading(true); setError(""); setResults(null);
@@ -72,18 +151,13 @@ export default function FileUploader() {
     }
   };
 
-  const added     = results?.filter(r => r.status === "added").length     ?? 0;
-  const duplicate = results?.filter(r => r.status === "duplicate").length ?? 0;
-  const errors    = results?.filter(r => r.status === "error").length     ?? 0;
-  const sheetUrl  = results?.find(r => r.spreadsheet_url)?.spreadsheet_url ?? SHEET_URL;
+  const sheetUrl = results?.find(r => r.spreadsheet_url)?.spreadsheet_url ?? SHEET_URL;
 
-  // ── Pill de estado de la API ──────────────────────────────────
-  const statusPill = () => {
-    if (apiStatus === null) return { dot: "#A0A0A0", text: 'Verificando conexión…' };
-    if (apiStatus)          return { dot: "#4ADE80", text: 'Conectado al servicio '};
-    return                         { dot: "#F87171", text: 'Sin conexión al servicio'};
-  };
-  const pill = statusPill();
+  const pill = apiStatus === null
+    ? { dot: "#A0A0A0", text: "Verificando conexión, por favor espere suele tardar entre 2 y 3 minutos…" }
+    : apiStatus
+      ? { dot: "#4ADE80", text: "Conectado al servicio" }
+      : { dot: "#F87171", text: "Sin conexión al servicio" };
 
   return (
     <div style={{
@@ -99,12 +173,10 @@ export default function FileUploader() {
             display: "inline-flex", alignItems: "center", gap: 10,
             background: "#1A1A1A", color: "#F7F7F5", borderRadius: 12,
             padding: "8px 18px", marginBottom: 16, fontSize: 13, fontWeight: 500,
-            transition: "opacity .3s",
           }}>
             <span style={{
               width: 7, height: 7, borderRadius: "50%",
               background: pill.dot, display: "inline-block",
-              // pulso animado mientras verifica
               animation: apiStatus === null ? "pulse 1s ease-in-out infinite" : "none",
             }}/>
             {pill.text}
@@ -122,19 +194,16 @@ export default function FileUploader() {
           background: "#fff", borderRadius: 20, border: "1px solid #E8E8E4",
           padding: "28px 28px 24px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
         }}>
-
-          {/* Aviso si la API no responde */}
           {apiStatus === false && (
             <div style={{
               background: "#FEF0F0", border: "1px solid #FCA5A5", borderRadius: 10,
               padding: "10px 14px", marginBottom: 16, fontSize: 13, color: "#991B1B",
             }}>
-              Error la conexión a la API no esta disponible.
+              Error — la conexión a la API no está disponible.
               Recarga la página para comprobar la conexión nuevamente.
             </div>
           )}
 
-          {/* Zona drag & drop */}
           <div
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -144,8 +213,7 @@ export default function FileUploader() {
               border: `2px dashed ${dragOver ? "#1A1A1A" : "#D4D4CF"}`,
               borderRadius: 14, padding: "32px 20px", textAlign: "center",
               cursor: "pointer", transition: "all .2s",
-              background: dragOver ? "#F0F0EC" : "#FAFAF8",
-              marginBottom: 20,
+              background: dragOver ? "#F0F0EC" : "#FAFAF8", marginBottom: 20,
             }}
           >
             <input ref={inputRef} type="file" multiple accept="application/pdf"
@@ -159,7 +227,6 @@ export default function FileUploader() {
             </p>
           </div>
 
-          {/* Lista de archivos */}
           {pdfFiles.length > 0 && (
             <div style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 12, fontWeight: 600, color: "#6B6B6B", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
@@ -187,7 +254,6 @@ export default function FileUploader() {
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div style={{
               background: "#FEF0F0", border: "1px solid #FCA5A5", borderRadius: 10,
@@ -197,7 +263,6 @@ export default function FileUploader() {
             </div>
           )}
 
-          {/* Botón procesar */}
           <button
             onClick={handleSubmit}
             disabled={loading || !pdfFiles.length || apiStatus === false}
@@ -222,65 +287,37 @@ export default function FileUploader() {
           </button>
         </div>
 
-        {/* Resultados */}
+        {/* Resultados — una sección por hoja */}
         {results && (
           <div style={{
             marginTop: 20, background: "#fff", borderRadius: 20,
             border: "1px solid #E8E8E4", overflow: "hidden",
             boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
           }}>
-            {/* Resumen */}
-            <div style={{ padding: "20px 28px 16px", borderBottom: "1px solid #F0F0EC" }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: "#6B6B6B", margin: "0 0 12px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div style={{ padding: "18px 22px 6px" }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#6B6B6B", margin: "0 0 14px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 Resumen del proceso
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-                {[
-                  { label: "Agregadas",  value: added,     ...STATUS_CONFIG.added },
-                  { label: "Duplicadas", value: duplicate, ...STATUS_CONFIG.duplicate },
-                  { label: "Con error",  value: errors,    ...STATUS_CONFIG.error },
-                ].map(s => (
-                  <div key={s.label} style={{
-                    background: s.bg, border: `1px solid ${s.border}`,
-                    borderRadius: 10, padding: "10px 12px", textAlign: "center",
-                  }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: s.color }}>{s.value}</div>
-                    <div style={{ fontSize: 11, color: s.color, fontWeight: 500, marginTop: 2 }}>{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Detalle por factura */}
-            <div style={{ padding: "16px 28px", display: "flex", flexDirection: "column", gap: 8 }}>
-              {results.map((r, i) => {
-                const cfg = STATUS_CONFIG[r.status] ?? STATUS_CONFIG.error;
-                return (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    background: "#FAFAF8", borderRadius: 10, padding: "10px 14px",
-                    border: "1px solid #ECECEA",
-                  }}>
-                    <div>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
-                        Factura #{r.nro_factura}
-                      </span>
-                      <p style={{ fontSize: 12, color: "#9A9A96", margin: "2px 0 0" }}>{r.message}</p>
-                    </div>
-                    <span style={{
-                      background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`,
-                      borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 600,
-                      whiteSpace: "nowrap", marginLeft: 12,
-                    }}>
-                      {cfg.label}
-                    </span>
-                  </div>
-                );
-              })}
+              {/* Hoja Facturas */}
+              <SheetSummary
+                title="Hoja Facturas"
+                results={results}
+                statusKey="status_facturas"
+                messageKey="message_facturas"
+              />
+
+              {/* Hoja PLL MULTIFACTURAS */}
+              <SheetSummary
+                title="Hoja PLL Multifacturas"
+                results={results}
+                statusKey="status_pll"
+                messageKey="message_pll"
+              />
             </div>
 
             {/* Acciones */}
-            <div style={{ padding: "0 28px 24px", display: "flex", gap: 10 }}>
+            <div style={{ padding: "8px 22px 22px", display: "flex", gap: 10 }}>
               <a href={sheetUrl} target="_blank" rel="noopener noreferrer" style={{
                 flex: 1, display: "block", textAlign: "center",
                 background: "#1A1A1A", color: "#F7F7F5", borderRadius: 12,
