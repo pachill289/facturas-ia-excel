@@ -111,37 +111,28 @@ export default function FileUploader() {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     const waitForApi = async () => {
-      setApiStatus(null); // "Verificando..."
-    
-      const maxRetries = 10;
-      const delay = 3000; // 3 segundos entre intentos
-    
-      for (let i = 0; i < maxRetries; i++) {
+      setApiStatus(null);
+
+      while (true) {
         try {
           const res = await fetch(`${API_BASE}/health`, {
             signal: AbortSignal.timeout(5000),
           });
-        
+
           if (res.ok) {
             const data = await res.json();
-          
+
             if (data.status === "ok") {
               if (isMounted) setApiStatus(true);
               return;
             }
           }
-        } catch (e) {
-          // ignora errores y reintenta
-        }
-      
-        // esperar antes del siguiente intento
-        await new Promise(r => setTimeout(r, delay));
+        } catch (e) {}
+
+        await new Promise(r => setTimeout(r, 3000));
       }
-    
-      // si nunca respondió bien
-      if (isMounted) setApiStatus(false);
   };
 
   waitForApi();
