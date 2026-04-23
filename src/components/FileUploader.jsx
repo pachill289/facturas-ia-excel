@@ -110,16 +110,46 @@ export default function FileUploader() {
   const inputRef = useRef();
 
   useEffect(() => {
-    const check = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
-        setApiStatus(res.ok);
-      } catch {
-        setApiStatus(false);
+    let isMounted = true;
+    
+    const waitForApi = async () => {
+      setApiStatus(null); // "Verificando..."
+    
+      const maxRetries = 10;
+      const delay = 3000; // 3 segundos entre intentos
+    
+      for (let i = 0; i < maxRetries; i++) {
+        try {
+          const res = await fetch(`${API_BASE}/health`, {
+            signal: AbortSignal.timeout(5000),
+          });
+        
+          if (res.ok) {
+            const data = await res.json();
+          
+            if (data.status === "ok") {
+              if (isMounted) setApiStatus(true);
+              return;
+            }
+          }
+        } catch (e) {
+          // ignora errores y reintenta
+        }
+      
+        // esperar antes del siguiente intento
+        await new Promise(r => setTimeout(r, delay));
       }
-    };
-    check();
-  }, []);
+    
+      // si nunca respondió bien
+      if (isMounted) setApiStatus(false);
+  };
+
+  waitForApi();
+
+  return () => {
+    isMounted = false;
+  };
+}, []);
 
   const addFiles = (incoming) => {
     const pdfs = Array.from(incoming).filter(f => f.type === "application/pdf");
