@@ -73,8 +73,15 @@ function SheetSummary({ title, results, statusKey, messageKey }) {
               }}>
                 <div>
                   <span style={{ fontSize: 13, fontWeight: 600, color: "#1A1A1A" }}>
-                    Factura #{r.nro_factura}
+                    {r.status === "error" && r.filename
+                      ? r.filename
+                      : `Factura #${r.nro_factura}`}
                   </span>
+                  {r.status === "error" && r.filename && (
+                    <p style={{ fontSize: 11, color: "#9A9A96", margin: "1px 0 0" }}>
+                      Factura #{r.nro_factura !== "desconocida" ? r.nro_factura : "—"}
+                    </p>
+                  )}
                   <p style={{ fontSize: 11, color: "#9A9A96", margin: "2px 0 0" }}>{msg ?? "—"}</p>
                 </div>
                 <span style={{
@@ -105,7 +112,7 @@ export default function FileUploader() {
   useEffect(() => {
     const check = async () => {
       try {
-        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(180000) });
+        const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(4000) });
         setApiStatus(res.ok);
       } catch {
         setApiStatus(false);
@@ -154,7 +161,7 @@ export default function FileUploader() {
   const sheetUrl = results?.find(r => r.spreadsheet_url)?.spreadsheet_url ?? SHEET_URL;
 
   const pill = apiStatus === null
-    ? { dot: "#A0A0A0", text: "Verificando conexión, por favor espere suele tardar entre 2 y 3 minutos…" }
+    ? { dot: "#A0A0A0", text: "Verificando conexión…" }
     : apiStatus
       ? { dot: "#4ADE80", text: "Conectado al servicio" }
       : { dot: "#F87171", text: "Sin conexión al servicio" };
