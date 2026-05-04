@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 // desarrollo
-// const API_BASE  = "http://localhost:8000";
+const API_BASE  = "http://localhost:8000";
 // producción
-const API_BASE  = import.meta.env.VITE_API_BASE  ?? "http://localhost:8000";
+// const API_BASE  = import.meta.env.VITE_API_BASE  ?? "http://localhost:8000";
 const API_URL   = `${API_BASE}/process-invoices`;
 const SHEET_URL = import.meta.env.VITE_SHEET_URL ?? "";
 
@@ -179,6 +179,23 @@ export default function FileUploader() {
     }
   };
 
+  const handleDeleteInvoices = async () => {
+
+    try {
+      const res = await fetch(`${API_BASE}/clear-invoices`, { method: "DELETE"});
+      if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+      const data = await res.json();
+      console.log(data);
+      setError(data.message);
+      //setResults(data);
+      setPdfFiles([]);
+    } catch (e) {
+      setError(`No se pudo conectar con la API. ¿Está corriendo en ${API_URL}?\n${e.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const sheetUrl = results?.find(r => r.spreadsheet_url)?.spreadsheet_url ?? SHEET_URL;
 
   const pill = apiStatus === null
@@ -295,7 +312,7 @@ export default function FileUploader() {
             onClick={handleSubmit}
             disabled={loading || !pdfFiles.length || apiStatus === false}
             style={{
-              width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
+              width: "50%", padding: "13px 0",marginRight: "10px", borderRadius: 12, border: "none",
               background: loading || !pdfFiles.length || apiStatus === false ? "#C8C8C4" : "#1A1A1A",
               color: "#F7F7F5", fontWeight: 600, fontSize: 15,
               cursor: loading || !pdfFiles.length || apiStatus === false ? "not-allowed" : "pointer",
@@ -313,6 +330,13 @@ export default function FileUploader() {
               </span>
             ) : "Procesar facturas"}
           </button>
+          <button onClick={() => handleDeleteInvoices()} style={{
+                padding: "11px 18px", borderRadius: 12,
+                border: "1px solid #E8E8E4", background: "#FF0000",
+                color: "#F7F7F5", fontSize: 14, fontWeight: 500, cursor: "pointer",
+              }}>
+                Eliminar Registros Anteriores
+              </button>
         </div>
 
         {/* Resultados — una sección por hoja */}
