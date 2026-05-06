@@ -230,7 +230,7 @@ export default function FileUploader() {
             Procesador de Facturas
           </h1>
           <p style={{ fontSize: 14, color: "#6B6B6B", margin: 0 }}>
-            Sube los PDF de facturas TIGO para llevarlos automáticamente a un archivo Excel
+            Sube los PDF de facturas TIGO y ENTEL para llevarlos automáticamente a un archivo Excel
           </p>
         </div>
 
