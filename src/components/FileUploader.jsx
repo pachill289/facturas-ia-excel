@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 // desarrollo
-// const API_BASE  = "http://localhost:8000";
+//const API_BASE  = "http://localhost:8000";
 // producción
 const API_BASE  = import.meta.env.VITE_API_BASE  ?? "http://localhost:8000";
 const API_URL   = `${API_BASE}/process-invoices`;
@@ -103,6 +103,7 @@ function SheetSummary({ title, results, statusKey, messageKey }) {
 export default function FileUploader() {
   const [pdfFiles, setPdfFiles]   = useState([]);
   const [loading, setLoading]     = useState(false);
+  const [loadingDelete, setLoadingDelete]     = useState(false);
   const [results, setResults]     = useState(null);
   const [error, setError]         = useState("");
   const [dragOver, setDragOver]   = useState(false);
@@ -182,6 +183,7 @@ export default function FileUploader() {
   const handleDeleteInvoices = async () => {
 
     try {
+      setLoadingDelete(true);
       const res = await fetch(`${API_BASE}/clear-invoices`, { method: "DELETE"});
       if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
       const data = await res.json();
@@ -192,7 +194,7 @@ export default function FileUploader() {
     } catch (e) {
       setError(`No se pudo conectar con la API. ¿Está corriendo en ${API_URL}?\n${e.message}`);
     } finally {
-      setLoading(false);
+      setLoadingDelete(false);
     }
   };
 
@@ -332,11 +334,23 @@ export default function FileUploader() {
           </button>
           <button onClick={() => handleDeleteInvoices()} style={{
                 padding: "11px 18px", borderRadius: 12,
-                border: "1px solid #E8E8E4", background: "#FF0000",
+                border: "1px solid #E8E8E4",
+                background: loadingDelete || apiStatus === false ? "#C8C8C4" : "#FF0000",
                 color: "#F7F7F5", fontSize: 14, fontWeight: 500, cursor: "pointer",
+                cursor: loadingDelete || apiStatus === false ? "not-allowed" : "pointer"
               }}>
-                Eliminar Registros Anteriores
-              </button>
+              {loadingDelete ? (
+              <span style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                <span style={{
+                  width: 16, height: 16, border: "2px solid #ffffff",
+                  borderTopColor: "transparent", borderRadius: "50%",
+                  display: "inline-block", animation: "spin 0.7s linear infinite",
+                }}/>
+                Eliminando Registros…
+              </span>
+            ) : "Eliminar Registros Anteriores"}
+                
+          </button>
         </div>
 
         {/* Resultados — una sección por hoja */}
